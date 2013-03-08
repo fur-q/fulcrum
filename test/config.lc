@@ -1,0 +1,12 @@
+hostname  = "localhost"
+reconnect = true
+attempts  = 10
+ignore    = { "user1", "user2" }
+channels  = {}
+ 
+-- this is just fine and dandy
+for i = 1, 4 do
+    channels[i] = "#channel" .. i
+end
+ 
+include "config2.lc"
