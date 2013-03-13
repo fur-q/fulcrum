@@ -5,19 +5,16 @@ local function include(name, env)
     return env
 end
 
-local function config(name, env)
+return function(name, env)
     local env, mt = env or {}, getmetatable(env) or { __index = {} }
-    if type(mt.__index) == "table" then
-        mt.__index.include = function(f) return include(f, env) end
+    if type(mt.__index) == "table" and not mt.__index.include then
+        mt.__index.include = function(f, t) return include(f, t or env) end
     end
-    setmetatable(env, mt)
     local ok, env = pcall(function()
         debug.sethook(function() error("timed out") end, "", 1e5)
-        local out = include(name, env)
+        local out = include(name, setmetatable(env, mt))
         debug.sethook()
         return out
     end)
     return ok and env or nil, env
 end
-
-return config

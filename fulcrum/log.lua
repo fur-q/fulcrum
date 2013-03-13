@@ -16,6 +16,8 @@ local syslog, filelog = {}, {}
 for i,v in pairs(levels) do
     syslog[v]  = i-1
     filelog[v] = i-1
+    syslog[v:lower()]  = function(self, fmt, ...) self:write(i-1, fmt, ...) end
+    filelog[v:lower()] = function(self, fmt, ...) self:write(i-1, fmt, ...) end
 end
 
 local function log_makepri(fac, pri)
@@ -31,7 +33,7 @@ local function is_pri(pri)
 end
 
 local function quicklog(self, fmt, ...)
-	self:write(log.INFO, fmt, ...)
+	self:write(syslog.INFO, fmt, ...)
 end
 
 function syslog:open(name, max)
@@ -74,9 +76,6 @@ function filelog:close()
 	self.file:close()
 end
 
-return { 
-	new = function(where)
-		return where == "syslog" and setmetatable({}, { __index = syslog }) or
-	    	                         setmetatable({}, { __index = filelog})	
-	end 
-}
+return function(sys)
+	return setmetatable({}, { __index = sys and syslog or filelog, __call = quicklog })
+end 

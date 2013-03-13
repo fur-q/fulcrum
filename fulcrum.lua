@@ -1,3 +1,5 @@
+#! /usr/bin/env luajit
+
 package.path = package.path .. ";?.lua"
 
 if not arg[1] then
@@ -7,5 +9,10 @@ end
 
 local fulcrum = require "fulcrum.master"
 
-fulcrum.init(arg[1])
-fulcrum.run()
+local ok, err = fulcrum.init(arg[1])
+if not ok then
+	print(err)
+	os.exit(1)
+end
+
+fulcrum.main_loop()
