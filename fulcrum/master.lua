@@ -8,7 +8,6 @@ local logger  = require "fulcrum.log"
 local ffi     = require "ffi"
 
 FC_VERSION = "fulcrum/0.1"
-local EPERM, EAGAIN = 1, 11
 local sf = string.format
 
 getmetatable("").__mod = function(s, t) return type(t) == "table" and sf(s, unpack(t)) or sf(s, t) end
@@ -75,9 +74,9 @@ function fc.unload()
     -- clean up any fds we may have left open
     for k,v in pairs(fc.cfg.apps) do
         if v._sock then v._sock:close() end
-        --if v.log and v.log ~= io.stdout then v.log:close() end
+        if v.log and v.log ~= fc.cfg.log and v.log ~= io.stdout then v.log:close() end
     end
-    --if fc.cfg.log and fc.cfg.log ~= io.stdout then fc.cfg.log:close() end
+    if fc.cfg.log and fc.cfg.log ~= io.stdout then fc.cfg.log:close() end
     return nil, err
 end
 
@@ -104,14 +103,13 @@ function fc.spawn_worker(id)
         while true do
             local x, err = ipc_rd:read()
             if not x then
-                if not fc.alive then print(":(") break end
+                if not fc.alive then break end
                 fc.log("Child %d died (respawning): %s", id, err)
                 fc.workers[ipc_rd] = nil
                 fc.spawn_worker(id)
                 break
             end
         end
-        print("bye")
     end)
 end
 
@@ -154,10 +152,10 @@ function fc.init(lc)
     local cfg, err = fc.load(lc)
     if not cfg then return fc.unload() end
 
-    -- if cfg.daemon then
-    --     local ok,  err = daemon.daemonise()
-    --     if not ok then return nil, err end
-    -- end
+    if cfg.daemon then
+        local ok,  err = daemon.daemonise()
+        if not ok then return nil, err end
+    end
 
     return true
 end

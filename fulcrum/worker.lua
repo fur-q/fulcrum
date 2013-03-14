@@ -61,7 +61,7 @@ end
 
 local function read_request(sock)
 	local size, b = 0
-	repeat
+	while true do
 		b = sock:read(1)
 		if b == ":" then break end
 		local c = tonumber(b)
@@ -70,7 +70,7 @@ local function read_request(sock)
 		if size > 1048576 then
 			return nil, "Request header too big (>1MB)"
 		end
-	until false
+	end
 
 	local env = {}
 
@@ -81,11 +81,11 @@ local function read_request(sock)
 
 	local sep, err = sock:read(1)
 	if sep ~= "," then
-		return nil, "Malformed request: %s" % sep
+		return nil, "Malformed request"
 	end
 
 	for k, v in sgmatch(hdr, "(%Z+)%z(%Z-)%z") do
-		if env[k] then return nil, "Duplicate header: " .. k end
+		if env[k] then return nil, "Duplicate header: %s" % k end
 		env[k] = v
 	end
 
@@ -103,7 +103,7 @@ local function read_request(sock)
 end
 
 local function write_response(sock, resp)
-	if not (tonumber(resp.status) > 99 and tonumber(resp.status) < 599) then
+	if not status[resp.status] then
 		return nil, "Invalid response status"
 	end
 
@@ -157,11 +157,13 @@ return function(cfg, ipc, n)
 	local cq = cqueues.new()
 	signal.block(signal.SIGHUP, signal.SIGINT, signal.SIGQUIT)
 
+	-- TODO add SIGQUIT listener
+
 	cq:wrap(function()
 		while true do
 			local x, err = ipc:read()
 			if not x then
-				if err ~= 32 then -- EPIPE
+				if err ~= 32 then -- EPIPE; master went down
 					cfg.log:err(err)
 				end
 				break
